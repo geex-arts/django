@@ -1700,8 +1700,12 @@ def prefetch_one_level(instances, prefetcher, lookup, level):
 
     rel_obj_cache = {}
     for rel_obj in all_related_objects:
-        rel_attr_val = rel_obj_attr(rel_obj)
-        rel_obj_cache.setdefault(rel_attr_val, []).append(rel_obj)
+        if hasattr(prefetcher, 'field') and prefetcher.field.__class__.__name__ == 'GenericRelation':
+            rel_attr_val = rel_obj.pk
+            rel_obj_cache.setdefault(rel_attr_val, []).append(rel_obj)
+        else:
+            rel_attr_val = rel_obj_attr(rel_obj)
+            rel_obj_cache.setdefault(rel_attr_val, []).append(rel_obj)
 
     to_attr, as_attr = lookup.get_current_to_attr(level)
     # Make sure `to_attr` does not conflict with a field.
@@ -1721,7 +1725,10 @@ def prefetch_one_level(instances, prefetcher, lookup, level):
     leaf = len(lookup.prefetch_through.split(LOOKUP_SEP)) - 1 == level
 
     for obj in instances:
-        instance_attr_val = instance_attr(obj)
+        if hasattr(prefetcher, 'field') and prefetcher.field.__class__.__name__ == 'GenericRelation':
+            instance_attr_val = getattr(obj, prefetcher.field.object_id_field_name)
+        else:
+            instance_attr_val = instance_attr(obj)
         vals = rel_obj_cache.get(instance_attr_val, [])
 
         if single:
